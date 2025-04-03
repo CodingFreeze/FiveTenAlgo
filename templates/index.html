@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiveTenAlgo Trading Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* Add this to ensure the loading spinner is visible */
+        #chart-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100px;
+            width: 200px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .test-link {
+            margin-left: 15px;
+            color: #2196F3;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>FiveTenAlgo</h1>
+            <p>Automated Trading System</p>
+        </div>
+        <div class="simulation-selector">
+            <label for="simulation-mode">Strategy:</label>
+            <select id="simulation-mode">
+                <option value="default">Default</option>
+                <option value="aggressive">Aggressive</option>
+                <option value="conservative">Conservative</option>
+                <option value="balanced">Balanced</option>
+            </select>
+        </div>
+        <div class="timeline-selector">
+            <label for="timeline-period">Timeline:</label>
+            <select id="timeline-period">
+                <option value="all">All Time</option>
+                <option value="5y">5 Years</option>
+                <option value="3y">3 Years</option>
+                <option value="1y">1 Year</option>
+                <option value="6m">6 Months</option>
+                <option value="3m">3 Months</option>
+                <option value="1m">1 Month</option>
+            </select>
+        </div>
+        <div class="status">
+            <span id="status-indicator"></span>
+            <span id="status-text">Loading...</span>
+        </div>
+    </header>
+    
+    <!-- New Simulation Tabs -->
+    <div class="simulation-tabs">
+        <div class="simulation-tab active" data-simulation="all" onclick="switchSimulation('all')">NASDAQ (1971)</div>
+        <div class="simulation-tab" data-simulation="2000" onclick="switchSimulation('2000')">From 2000</div>
+        <div class="simulation-tab" data-simulation="covid" onclick="switchSimulation('covid')">COVID (2020)</div>
+    </div>
+
+    <main>
+        <section class="metrics-panel">
+            <div class="metric-card">
+                <h3>Total Return</h3>
+                <p id="total-return">...</p>
+            </div>
+            <div class="metric-card">
+                <h3>Annualized Return</h3>
+                <p id="annualized-return">...</p>
+            </div>
+            <div class="metric-card">
+                <h3>Max Drawdown</h3>
+                <p id="max-drawdown">...</p>
+            </div>
+            <div class="metric-card">
+                <h3>Portfolio Value</h3>
+                <p id="portfolio-value">...</p>
+            </div>
+        </section>
+
+        <section class="chart-container">
+            <h2>Performance History</h2>
+            <div class="chart-options">
+                <label class="switch">
+                    <input type="checkbox" id="toggle-distribution">
+                    <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Show Cash/Equity Distribution</span>
+                <a href="#" onclick="testApiConnection(); return false;" class="test-link">Test API</a>
+            </div>
+            <div id="performance-chart">
+                <div id="chart-loading" class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading chart data...</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="data-container">
+            <div class="portfolio-panel">
+                <h2>Current Portfolio</h2>
+                <div class="data-scroll">
+                    <table id="portfolio-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Shares</th>
+                                <th>Cost Basis</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-body">
+                            <tr>
+                                <td colspan="3">Loading portfolio data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="cash-position">
+                    <p>Available Cash: <span id="cash-value">...</span></p>
+                </div>
+            </div>
+
+            <div class="trades-panel">
+                <h2>Recent Trades</h2>
+                <div class="data-scroll">
+                    <table id="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Symbol</th>
+                                <th>Action</th>
+                                <th>Price</th>
+                                <th>Shares</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-body">
+                            <tr>
+                                <td colspan="6">Loading trade data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>FiveTenAlgo &copy; 2023 - Last updated: <span id="last-update-date">...</span></p>
+        <p>Trading simulation from February 8, 1971 (NASDAQ inception) to current date</p>
+    </footer>
+
+    <script>
+        // Global variables
+        let performanceData = [];
+        let portfolioData = {};
+        let tradeLogData = [];
+        let metricsData = {};
+        let statusData = {};
+        let distributionData = [];
+        let currentSimulationMode = 'default';
+        let currentTimeline = 'all';
+        let currentSimulationStartPoint = 'all'; // New: tracks which simulation tab is active
+        let showDistribution = false;
+        let performanceChart = null;
+        let dataLoading = false;
+        let workingApiPort = null; // Store the working API port
+        
+        // Fetch status data
+        async function fetchStatus() {
+            try {
+                let url = '/api/status';
+                
+                // If we have discovered a working port, use it
+                if (workingApiPort) {
+                    url = `http://localhost:${workingApiPort}/api/status`;
+                }
+                
+                console.log(`Fetching status from: ${url}`);
+                const response = await fetch(url);
+                statusData = await response.json();
+                
+                const statusIndicator = document.getElementById('status-indicator');
+                const statusText = document.getElementById('status-text');
+                
+                if (statusData.status === 'ready') {
+                    statusIndicator.className = 'status-ready';
+                    statusText.textContent = 'System Ready';
+                } else {
+                    statusIndicator.className = 'status-initializing';
+                    statusText.textContent = 'Initializing...';
+                    
+                    // If still initializing, retry after 5 seconds
+                    setTimeout(fetchStatus, 5000);
+                }
+            } catch (error) {
+                console.error('Error fetching status:', error);
+                document.getElementById('status-text').textContent = 'Error: Could not connect to server';
+            }
+        }
+        
+        // Fetch performance history
+        async function fetchPerformanceHistory() {
+            try {
+                // Show loading spinner
+                document.getElementById('chart-loading').style.display = 'flex';
+                dataLoading = true;
+                
+                // For simulation start points other than 'all', use them as period parameter
+                // For 'all', use the current timeline selection
+                const periodParam = currentSimulationStartPoint; // 'all', '2000', or 'covid'
+                const timelineParam = currentSimulationStartPoint !== 'all' ? 
+                    'all' : currentTimeline;
+                
+                const response = await fetch(`/api/performance_history?mode=${currentSimulationMode}&period=${periodParam}&timeline=${timelineParam}`);
+                performanceData = await response.json();
+                
+                // Plot performance chart
+                plotPerformanceChart();
+                
+            } catch (error) {
+                console.error('Error fetching performance history:', error);
+                document.getElementById('performance-chart').innerHTML = '<p class="error">Error loading performance data</p>';
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+            }
+        }
+        
+        // Fetch trade log
+        async function fetchTradeLog() {
+            try {
+                // For simulation start points other than 'all', use them as period parameter
+                const periodParam = currentSimulationStartPoint; // 'all', '2000', or 'covid'
+                const timelineParam = currentSimulationStartPoint !== 'all' ? 
+                    'all' : currentTimeline;
+                
+                const response = await fetch(`/api/trade_log?mode=${currentSimulationMode}&period=${periodParam}&timeline=${timelineParam}`);
+                tradeLogData = await response.json();
+                
+                // Display recent trades
+                displayTradeLog();
+                
+            } catch (error) {
+                console.error('Error fetching trade log:', error);
+                document.getElementById('trades-body').innerHTML = '<tr><td colspan="6">Error loading trade data</td></tr>';
+            }
+        }
+        
+        // Fetch portfolio data
+        async function fetchPortfolio() {
+            try {
+                const periodParam = currentSimulationStartPoint; // 'all', '2000', or 'covid'
+                
+                const response = await fetch(`/api/portfolio?mode=${currentSimulationMode}&period=${periodParam}`);
+                portfolioData = await response.json();
+                
+                // Display portfolio data
+                displayPortfolio();
+                
+            } catch (error) {
+                console.error('Error fetching portfolio:', error);
+                document.getElementById('portfolio-body').innerHTML = '<tr><td colspan="3">Error loading portfolio data</td></tr>';
+            }
+        }
+        
+        // Fetch metrics
+        async function fetchMetrics() {
+            try {
+                // For simulation start points other than 'all', use them as period parameter
+                const periodParam = currentSimulationStartPoint; // 'all', '2000', or 'covid'
+                const timelineParam = currentSimulationStartPoint !== 'all' ? 
+                    'all' : currentTimeline;
+                
+                const response = await fetch(`/api/metrics?mode=${currentSimulationMode}&period=${periodParam}&timeline=${timelineParam}`);
+                metricsData = await response.json();
+                
+                // Display metrics
+                displayMetrics();
+                
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+                document.getElementById('total-return').textContent = 'Error';
+                document.getElementById('annualized-return').textContent = 'Error';
+                document.getElementById('max-drawdown').textContent = 'Error';
+                document.getElementById('portfolio-value').textContent = 'Error';
+            }
+        }
+        
+        // Fetch distribution data
+        async function fetchDistributionData() {
+            try {
+                // For simulation start points other than 'all', use them as period parameter
+                const periodParam = currentSimulationStartPoint; // 'all', '2000', or 'covid'
+                const timelineParam = currentSimulationStartPoint !== 'all' ? 
+                    'all' : currentTimeline;
+                
+                const response = await fetch(`/api/distribution?mode=${currentSimulationMode}&period=${periodParam}&timeline=${timelineParam}`);
+                distributionData = await response.json();
+            } catch (error) {
+                console.error('Error fetching distribution data:', error);
+                distributionData = [];
+            }
+        }
+        
+        // Plot performance chart using Plotly
+        function plotPerformanceChart() {
+            if (dataLoading) {
+                document.getElementById('chart-loading').style.display = 'flex';
+            }
+            
+            try {
+                if (!performanceData || performanceData.length === 0) {
+                    document.getElementById('performance-chart').innerHTML = '<p class="error">No performance data available for this time period</p>';
+                    document.getElementById('chart-loading').style.display = 'none';
+                    dataLoading = false;
+                    return;
+                }
+                
+                // Check if the data has valid structure
+                const firstDataPoint = performanceData[0];
+                if (!firstDataPoint.date || !firstDataPoint.portfolio_value) {
+                    document.getElementById('performance-chart').innerHTML = '<p class="error">Invalid performance data format</p>';
+                    document.getElementById('chart-loading').style.display = 'none';
+                    dataLoading = false;
+                    return;
+                }
+                
+                const dates = performanceData.map(item => item.date);
+                const portfolioValues = performanceData.map(item => item.portfolio_value);
+                
+                // Create a simplified trace for better performance
+                let traces = [];
+                
+                // Add additional traces if distribution view is enabled
+                if (showDistribution && distributionData && distributionData.length > 0) {
+                    // Add cash and equity as area charts
+                    const cashValues = distributionData.map(item => item.cash);
+                    const equityValues = distributionData.map(item => item.equity);
+                    const distributionDates = distributionData.map(item => item.date);
+                    
+                    // Check that we have valid data structure
+                    if (cashValues.length > 0 && equityValues.length > 0) {
+                        // Ensure all the values are numbers and not null/undefined
+                        const validCashValues = cashValues.map(val => typeof val === 'number' ? val : 0);
+                        const validEquityValues = equityValues.map(val => typeof val === 'number' ? val : 0);
+                        
+                        const cashTrace = {
+                            x: distributionDates,
+                            y: validCashValues,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Cash',
+                            line: {width: 0},
+                            fill: 'tozeroy',
+                            fillcolor: 'rgba(76, 175, 80, 0.3)'
+                        };
+                        
+                        const equityTrace = {
+                            x: distributionDates,
+                            y: validEquityValues,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Equity',
+                            line: {width: 0},
+                            fill: 'tonexty',
+                            fillcolor: 'rgba(33, 150, 243, 0.3)'
+                        };
+                        
+                        traces = [cashTrace, equityTrace];
+                        
+                        // Add a combined total trace that matches portfolio value to ensure correct scaling
+                        const totalTrace = {
+                            x: dates,
+                            y: portfolioValues,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Total Value',
+                            line: {
+                                color: '#000000',
+                                width: 1.5,
+                                dash: 'dash'
+                            },
+                            opacity: 0.7
+                        };
+                        
+                        traces.push(totalTrace);
+                    } else {
+                        console.error('Invalid distribution data structure, falling back to portfolio values only');
+                        // Fall back to portfolio value only if distribution data is invalid
+                        const trace = {
+                            x: dates,
+                            y: portfolioValues,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Portfolio Value',
+                            line: {
+                                color: '#2196F3',
+                                width: 2
+                            }
+                        };
+                        
+                        traces = [trace];
+                    }
+                } else {
+                    // Standard portfolio value trace
+                    const trace = {
+                        x: dates,
+                        y: portfolioValues,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Portfolio Value',
+                        line: {
+                            color: '#2196F3',
+                            width: 2
+                        }
+                    };
+                    
+                    traces = [trace];
+                }
+                
+                const layout = {
+                    margin: { t: 10, b: 40, l: 60, r: 10 },
+                    xaxis: {
+                        title: 'Date',
+                        showgrid: false,
+                        rangeslider: {visible: false},
+                        type: 'date'
+                    },
+                    yaxis: {
+                        title: 'Value ($)',
+                        showgrid: true,
+                        gridcolor: '#f0f0f0'
+                    },
+                    hovermode: 'closest',
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    showlegend: true,
+                    legend: {
+                        x: 0,
+                        y: 1
+                    },
+                    responsive: true
+                };
+                
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+                
+                // Use Plotly.react for efficient updates if the chart already exists
+                if (performanceChart) {
+                    Plotly.react('performance-chart', traces, layout, config);
+                } else {
+                    // Create a new chart if it doesn't exist
+                    Plotly.newPlot('performance-chart', traces, layout, config).then((chart) => {
+                        performanceChart = chart;
+                    });
+                }
+                
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+            } catch (error) {
+                console.error('Error in plotPerformanceChart:', error);
+                document.getElementById('performance-chart').innerHTML = '<p class="error">Error creating performance chart: ' + error.message + '</p>';
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+            }
+        }
+        
+        // Display trade log data in the table
+        function displayTradeLog() {
+            const tradesBody = document.getElementById('trades-body');
+            
+            if (!tradeLogData || tradeLogData.length === 0) {
+                tradesBody.innerHTML = '<tr><td colspan="6">No trade data available</td></tr>';
+                return;
+            }
+            
+            // Display most recent trades first (last 20)
+            const recentTrades = tradeLogData.slice(-20).reverse();
+            
+            let html = '';
+            recentTrades.forEach(trade => {
+                const actionClass = trade.action === 'BUY' ? 'buy-action' : 'sell-action';
+                
+                html += `
+                    <tr>
+                        <td>${trade.date}</td>
+                        <td>${trade.symbol}</td>
+                        <td class="${actionClass}">${trade.action}</td>
+                        <td>$${trade.price.toFixed(2)}</td>
+                        <td>${trade.shares.toFixed(4)}</td>
+                        <td>$${trade.value.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            tradesBody.innerHTML = html;
+        }
+        
+        // Display portfolio data in the table
+        function displayPortfolio() {
+            const portfolioBody = document.getElementById('portfolio-body');
+            const cashValue = document.getElementById('cash-value');
+            
+            if (!portfolioData || !portfolioData.portfolio) {
+                portfolioBody.innerHTML = '<tr><td colspan="3">No portfolio data available</td></tr>';
+                cashValue.textContent = 'N/A';
+                return;
+            }
+            
+            // Display available cash
+            cashValue.textContent = `$${portfolioData.capital.toFixed(2)}`;
+            
+            // Get portfolio holdings
+            const holdings = portfolioData.portfolio;
+            
+            if (Object.keys(holdings).length === 0) {
+                portfolioBody.innerHTML = '<tr><td colspan="3">No holdings in portfolio</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            for (const symbol in holdings) {
+                const holding = holdings[symbol];
+                
+                html += `
+                    <tr>
+                        <td>${symbol}</td>
+                        <td>${holding.shares.toFixed(4)}</td>
+                        <td>$${holding.cost_basis.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+            
+            portfolioBody.innerHTML = html;
+        }
+        
+        // Display metrics data
+        function displayMetrics() {
+            if (!metricsData) {
+                return;
+            }
+            
+            // Update metric values
+            document.getElementById('total-return').textContent = 
+                `${metricsData.total_return ? metricsData.total_return.toFixed(2) : 0}%`;
+                
+            // Calculate annualized return if not provided
+            let annualizedReturn = 0;
+            if (metricsData.annualized_return) {
+                annualizedReturn = metricsData.annualized_return;
+            } else if (performanceData && performanceData.length > 1) {
+                const firstDate = new Date(performanceData[0].date);
+                const lastDate = new Date(performanceData[performanceData.length - 1].date);
+                const yearsElapsed = (lastDate - firstDate) / (1000 * 60 * 60 * 24 * 365);
+                
+                if (yearsElapsed > 0 && metricsData.total_return) {
+                    annualizedReturn = (Math.pow(1 + metricsData.total_return / 100, 1 / yearsElapsed) - 1) * 100;
+                }
+            }
+            
+            document.getElementById('annualized-return').textContent = 
+                `${annualizedReturn.toFixed(2)}%`;
+                
+            document.getElementById('max-drawdown').textContent = 
+                `${metricsData.max_drawdown ? metricsData.max_drawdown.toFixed(2) : 0}%`;
+                
+            document.getElementById('portfolio-value').textContent = 
+                `$${metricsData.ending_value ? metricsData.ending_value.toFixed(2) : 0}`;
+                
+            // Update last update date if available
+            if (performanceData && performanceData.length > 0) {
+                document.getElementById('last-update-date').textContent = 
+                    performanceData[performanceData.length - 1].date;
+            }
+        }
+        
+        // Handle simulation mode change
+        function handleSimulationModeChange() {
+            const selectElement = document.getElementById('simulation-mode');
+            currentSimulationMode = selectElement.value;
+            
+            // Update status text to show loading
+            const statusText = document.getElementById('status-text');
+            statusText.textContent = 'Loading simulation...';
+            
+            // Show loading spinner
+            document.getElementById('chart-loading').style.display = 'flex';
+            dataLoading = true;
+            
+            // Refresh all data with new simulation mode
+            refreshAllData().then(() => {
+                statusText.textContent = `Ready - ${currentSimulationMode.charAt(0).toUpperCase() + currentSimulationMode.slice(1)} Mode`;
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+            });
+        }
+        
+        // Handle timeline change
+        function handleTimelineChange() {
+            const selectElement = document.getElementById('timeline-period');
+            currentTimeline = selectElement.value;
+            
+            // Only apply timeline changes when using the NASDAQ (all) simulation
+            if (currentSimulationStartPoint === 'all') {
+                // Update status text to show loading
+                const statusText = document.getElementById('status-text');
+                statusText.textContent = 'Loading timeline...';
+                
+                // Show loading spinner
+                document.getElementById('chart-loading').style.display = 'flex';
+                dataLoading = true;
+                
+                // Refresh all data with new timeline
+                refreshAllData().then(() => {
+                    let timelineText;
+                    
+                    switch(currentTimeline) {
+                        case 'all':
+                            timelineText = 'All Time (since 1971)';
+                            break;
+                        case '5y':
+                            timelineText = '5 Years';
+                            break;
+                        case '3y':
+                            timelineText = '3 Years';
+                            break;
+                        case '1y':
+                            timelineText = '1 Year';
+                            break;
+                        case '6m':
+                            timelineText = '6 Months';
+                            break;
+                        case '3m':
+                            timelineText = '3 Months';
+                            break;
+                        case '1m':
+                            timelineText = '1 Month';
+                            break;
+                        default:
+                            timelineText = currentTimeline;
+                    }
+                    
+                    statusText.textContent = `Ready - ${timelineText} View`;
+                    document.getElementById('chart-loading').style.display = 'none';
+                    dataLoading = false;
+                });
+            }
+        }
+        
+        // Direct function to handle tab clicks via onclick attribute
+        function switchSimulation(simulationStartPoint) {
+            console.log(`Direct click on simulation tab: ${simulationStartPoint}`);
+            
+            // Find the tab element
+            const tabElement = document.querySelector(`.simulation-tab[data-simulation="${simulationStartPoint}"]`);
+            if (!tabElement) {
+                console.error(`Could not find tab element for: ${simulationStartPoint}`);
+                return;
+            }
+            
+            // Update active tab visually
+            document.querySelectorAll('.simulation-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            tabElement.classList.add('active');
+            
+            // Update current simulation start point
+            currentSimulationStartPoint = simulationStartPoint;
+            
+            // Enable/disable timeline dropdown based on simulation type
+            const timelineSelect = document.getElementById('timeline-period');
+            if (simulationStartPoint !== 'all') {
+                timelineSelect.disabled = true;
+            } else {
+                timelineSelect.disabled = false;
+            }
+            
+            // Update status
+            const statusText = document.getElementById('status-text');
+            statusText.textContent = 'Loading simulation...';
+            
+            // Show loading spinner
+            document.getElementById('chart-loading').style.display = 'flex';
+            dataLoading = true;
+            
+            // Refresh all data with new simulation
+            refreshAllData().then(() => {
+                let simulationName;
+                switch(simulationStartPoint) {
+                    case 'all':
+                        simulationName = 'NASDAQ (1971)';
+                        break;
+                    case '2000':
+                        simulationName = 'From 2000';
+                        break;
+                    case 'covid':
+                        simulationName = 'COVID (2020)';
+                        break;
+                    default:
+                        simulationName = simulationStartPoint;
+                }
+                statusText.textContent = `Ready - ${simulationName} Simulation`;
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+                
+                // Update the footer text based on the simulation
+                const footerText = document.querySelector('footer p:last-child');
+                if (simulationStartPoint === 'all') {
+                    footerText.textContent = 'Trading simulation from February 8, 1971 (NASDAQ inception) to current date';
+                } else if (simulationStartPoint === '2000') {
+                    footerText.textContent = 'Trading simulation from January 1, 2000 to current date';
+                } else if (simulationStartPoint === 'covid') {
+                    footerText.textContent = 'Trading simulation from March 13, 2020 (COVID market crash) to current date';
+                }
+            }).catch(error => {
+                console.error('Error in switchSimulation:', error);
+                statusText.textContent = `Error loading ${simulationStartPoint} simulation`;
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+            });
+        }
+        
+        // Toggle distribution view
+        function handleDistributionToggle() {
+            showDistribution = !showDistribution;
+            plotPerformanceChart();
+        }
+        
+        // Refresh all data
+        async function refreshAllData() {
+            document.getElementById('chart-loading').style.display = 'flex';
+            dataLoading = true;
+            
+            try {
+                // Fetch distribution data first since it's needed for the chart
+                await fetchDistributionData();
+                
+                // Use Promise.all to fetch data in parallel
+                await Promise.all([
+                    fetchPerformanceHistory(),
+                    fetchTradeLog(),
+                    fetchPortfolio(),
+                    fetchMetrics()
+                ]);
+                
+                // Hide loading once all data is loaded
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+                
+                return true;
+            } catch (error) {
+                console.error("Error refreshing data:", error);
+                document.getElementById('chart-loading').style.display = 'none';
+                dataLoading = false;
+                return false;
+            }
+        }
+        
+        // Handle simulation tab change 
+        function handleSimulationTabChange(event) {
+            // Make sure we get the tab element even if a child element was clicked
+            const tab = event.target.closest('.simulation-tab');
+            if (!tab) return; // Exit if we somehow didn't click on a tab
+            
+            const simulationStartPoint = tab.getAttribute('data-simulation');
+            if (!simulationStartPoint) return;
+            
+            console.log(`Tab clicked via event listener: ${simulationStartPoint}`);
+            switchSimulation(simulationStartPoint);
+        }
+        
+        // Test API connection to various ports
+        async function testApiConnection() {
+            const statusText = document.getElementById('status-text');
+            statusText.textContent = 'Testing API connection...';
+            
+            const ports = ['8082', '8081', '8080', window.location.port];
+            const paths = ['/api/test', '/api/status'];
+            
+            for (const port of ports) {
+                for (const path of paths) {
+                    try {
+                        const url = `http://localhost:${port}${path}`;
+                        console.log(`Testing API connection to: ${url}`);
+                        
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log(`API connection successful to ${url}:`, data);
+                            statusText.textContent = `API available at port ${port}`;
+                            workingApiPort = port; // Save the working port
+                            alert(`API is working at: ${url}\nResponse: ${JSON.stringify(data)}`);
+                            return;
+                        }
+                    } catch (error) {
+                        console.error(`Error connecting to ${port}${path}:`, error);
+                    }
+                }
+            }
+            
+            workingApiPort = null;
+            statusText.textContent = 'API connection test failed';
+            alert('Could not connect to API on any port. Please ensure the server is running.');
+        }
+        
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize the dashboard
+            initDashboard().then(() => {
+                setupDataRefresh();
+            });
+        });
+        
+        // Initialize the dashboard
+        async function initDashboard() {
+            // Try to discover the working port silently
+            await discoverWorkingPort();
+            
+            // First fetch status to check if system is ready
+            await fetchStatus();
+            
+            if (statusData.status === 'ready') {
+                console.log("Dashboard initialization started");
+                
+                // Add event listeners for selection changes
+                const simulationModeSelect = document.getElementById('simulation-mode');
+                simulationModeSelect.addEventListener('change', handleSimulationModeChange);
+                
+                const timelinePeriodSelect = document.getElementById('timeline-period');
+                timelinePeriodSelect.addEventListener('change', handleTimelineChange);
+                
+                // Add event listener for distribution toggle
+                const distributionToggle = document.getElementById('toggle-distribution');
+                distributionToggle.addEventListener('change', handleDistributionToggle);
+                
+                // Add event listeners for simulation tabs
+                const tabElements = document.querySelectorAll('.simulation-tab');
+                console.log(`Found ${tabElements.length} simulation tabs`);
+                
+                tabElements.forEach(tab => {
+                    console.log(`Adding click listener to tab: ${tab.textContent} (${tab.getAttribute('data-simulation')})`);
+                    // Remove any existing listeners to avoid duplicates
+                    tab.removeEventListener('click', handleSimulationTabChange);
+                    // Add the click listener
+                    tab.addEventListener('click', handleSimulationTabChange);
+                    // Make tab more obviously clickable
+                    tab.style.cursor = 'pointer';
+                });
+                
+                // Initialize the chart-loading element
+                document.getElementById('chart-loading').style.display = 'flex';
+                dataLoading = true;
+                
+                // Fetch all data simultaneously
+                await refreshAllData();
+                
+                // Add window resize handler for responsive charts
+                window.addEventListener('resize', function() {
+                    if (performanceChart) {
+                        Plotly.Plots.resize(performanceChart);
+                    }
+                });
+                
+                console.log("Dashboard initialization completed");
+            }
+        }
+        
+        // Silent version of port discovery (no alerts)
+        async function discoverWorkingPort() {
+            console.log("Silently discovering working API port...");
+            
+            const ports = ['8082', '8081', '8080', window.location.port];
+            const paths = ['/api/test', '/api/status'];
+            
+            for (const port of ports) {
+                for (const path of paths) {
+                    try {
+                        const url = `http://localhost:${port}${path}`;
+                        console.log(`Testing API connection to: ${url}`);
+                        
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log(`API connection successful to ${url}:`, data);
+                            workingApiPort = port; // Save the working port
+                            document.getElementById('status-text').textContent = `API available at port ${port}`;
+                            return true;
+                        }
+                    } catch (error) {
+                        console.error(`Error connecting to ${port}${path}:`, error);
+                    }
+                }
+            }
+            
+            console.log("Could not discover a working API port");
+            return false;
+        }
+        
+        // Refresh data periodically (every 60 seconds)
+        function setupDataRefresh() {
+            setInterval(async () => {
+                if (statusData.status === 'ready') {
+                    await refreshAllData();
+                }
+            }, 60000);
+        }
+    </script>
+</body>
+</html>

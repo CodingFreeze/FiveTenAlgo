@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiveTenAlgo - A NYSE & NASDAQ Trading Algorithm</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --secondary-color: #4CAF50;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --header-bg: #1a1a2e;
+            --card-bg: #ffffff;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+        }
+        
+        header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .cta-button:hover {
+            background-color: #0b7dda;
+        }
+        
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        
+        .feature-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            flex: 1;
+            min-width: 250px;
+            max-width: 350px;
+            transition: transform 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-card h3 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+        
+        .about-section {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin: 3rem 0;
+        }
+        
+        .about-section h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .strategy-details {
+            background-color: #f0f7ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        footer {
+            background-color: var(--header-bg);
+            color: white;
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">FiveTenAlgo</div>
+        <div class="tagline">NYSE & NASDAQ Trading Algorithm</div>
+    </header>
+    
+    <section class="hero">
+        <div class="container">
+            <h1>Smart Trading Algorithm Based on Weekly Price Changes</h1>
+            <p>FiveTenAlgo monitors securities on NYSE and NASDAQ, comparing real-time prices to those exactly one week prior and executing trades based on predetermined thresholds.</p>
+            <a href="/dashboard" class="cta-button">View Dashboard</a>
+        </div>
+    </section>
+    
+    <section class="container">
+        <div class="features">
+            <div class="feature-card">
+                <h3>5/10 Strategy</h3>
+                <p>Buy when prices drop by approximately 5% compared to one week earlier. Sell when prices rise by approximately 10% compared to one week earlier.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Signal Confirmation</h3>
+                <p>Requires price change to remain stable for 1-5 minutes before executing trades, reducing false signals.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Historical Performance</h3>
+                <p>Precomputed simulations from NASDAQ's founding in 1971 to present day, with validated results and metrics.</p>
+            </div>
+        </div>
+        
+        <div class="about-section" id="about">
+            <h2>About FiveTenAlgo</h2>
+            <p>FiveTenAlgo is a trading algorithm that uses a simple yet effective strategy based on weekly price changes. The algorithm was developed to capture short-term price volatility in a systematic way across a broad range of securities.</p>
+            
+            <div class="strategy-details">
+                <h3>Trading Strategy</h3>
+                <ul>
+                    <li><strong>Buy Signal:</strong> When a security's price drops by about 5% (between -4.5% and -5.5%) compared to one week earlier, buy $5 worth.</li>
+                    <li><strong>Sell Signal:</strong> When a security's price rises by about 10% (between 9.5% and 10.5%) compared to one week earlier, sell $10 worth.</li>
+                    <li><strong>Signal Confirmation:</strong> Requires price change to remain stable for 1-5 minutes before executing trades.</li>
+                </ul>
+            </div>
+            
+            <h3>Implementation Approach</h3>
+            <p>FiveTenAlgo uses a hybrid approach to simulation and execution:</p>
+            <ol>
+                <li><strong>Precomputed Simulation:</strong> Historical data from NASDAQ founding to March 1st, 2025 is precomputed and stored as JSON.</li>
+                <li><strong>Current Data:</strong> When visiting the dashboard, the simulation continues from that point to the current date.</li>
+                <li><strong>Data Integration:</strong> The two simulations are merged to provide a complete performance history.</li>
+            </ol>
+            
+            <h3>Performance Metrics</h3>
+            <p>The algorithm's performance is evaluated using several key metrics:</p>
+            <ul>
+                <li><strong>Total Return:</strong> Overall portfolio growth since inception</li>
+                <li><strong>Annualized Return:</strong> Yearly equivalent return rate</li>
+                <li><strong>Maximum Drawdown:</strong> Largest percentage drop from peak to trough</li>
+                <li><strong>Volatility:</strong> Standard deviation of returns</li>
+                <li><strong>Sharpe Ratio:</strong> Risk-adjusted return metric</li>
+            </ul>
+        </div>
+    </section>
+    
+    <footer>
+        <p>FiveTenAlgo &copy; 2025 | <a href="https://github.com/CodingFreeze/FiveTenAlgo" style="color: white;">GitHub Repository</a></p>
+    </footer>
+</body>
+</html> 
