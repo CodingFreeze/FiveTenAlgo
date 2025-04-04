@@ -1,4 +1,6 @@
-# FiveTenAlgo 
+# FiveTenAlgo
+
+> **DISCLAIMER:** This project is currently experiencing data retrieval issues when hosted through Vercel. The dashboard works correctly when running locally via terminal, but may display "Error: Could not connect to server" when accessed through the hosted version. This is being actively worked on and will be fixed in a future update.
 
 ![GitHub](https://img.shields.io/github/license/CodingFreeze/FiveTenAlgo?style=flat-square)
 ![Python Version](https://img.shields.io/badge/python-3.7%2B-blue?style=flat-square)
