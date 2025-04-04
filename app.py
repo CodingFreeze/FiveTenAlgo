@@ -325,8 +325,8 @@ def test_endpoint():
     return jsonify({"status": "ok", "message": "Server is running correctly"})
 
 def run_app(port=8080):
-    """Run the Flask application with proper setup."""
-    app.run(debug=True, host='0.0.0.0', port=port)
+    """Run the Flask application."""
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 if __name__ == '__main__':
     run_app() 
