@@ -200,17 +200,12 @@
         let showDistribution = false;
         let performanceChart = null;
         let dataLoading = false;
-        let workingApiPort = null; // Store the working API port
         
         // Fetch status data
         async function fetchStatus() {
             try {
-                let url = '/api/status';
-                
-                // If we have discovered a working port, use it
-                if (workingApiPort) {
-                    url = `http://localhost:${workingApiPort}/api/status`;
-                }
+                // Always use the current server's URL
+                const url = '/api/status';
                 
                 console.log(`Fetching status from: ${url}`);
                 const response = await fetch(url);
@@ -232,6 +227,8 @@
             } catch (error) {
                 console.error('Error fetching status:', error);
                 document.getElementById('status-text').textContent = 'Error: Could not connect to server';
+                // Try again after 5 seconds
+                setTimeout(fetchStatus, 5000);
             }
         }
         
@@ -812,39 +809,26 @@
             const statusText = document.getElementById('status-text');
             statusText.textContent = 'Testing API connection...';
             
-            const ports = ['8082', '8081', '8080', window.location.port];
-            const paths = ['/api/test', '/api/status'];
-            
-            for (const port of ports) {
-                for (const path of paths) {
-                    try {
-                        const url = `http://localhost:${port}${path}`;
-                        console.log(`Testing API connection to: ${url}`);
-                        
-                        const response = await fetch(url, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            console.log(`API connection successful to ${url}:`, data);
-                            statusText.textContent = `API available at port ${port}`;
-                            workingApiPort = port; // Save the working port
-                            alert(`API is working at: ${url}\nResponse: ${JSON.stringify(data)}`);
-                            return;
-                        }
-                    } catch (error) {
-                        console.error(`Error connecting to ${port}${path}:`, error);
-                    }
+            try {
+                // Simply test the API on the current server
+                const url = '/api/test';
+                console.log(`Testing API connection to: ${url}`);
+                
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`API connection successful to ${url}:`, data);
+                    statusText.textContent = `API connection successful`;
+                    alert(`API is working!\nResponse: ${JSON.stringify(data)}`);
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+            } catch (error) {
+                console.error(`Error connecting to API:`, error);
+                statusText.textContent = 'API connection test failed';
+                alert('Could not connect to API. Please ensure the server is running.');
             }
-            
-            workingApiPort = null;
-            statusText.textContent = 'API connection test failed';
-            alert('Could not connect to API on any port. Please ensure the server is running.');
         }
         
         // Initialize dashboard when page loads
@@ -857,9 +841,6 @@
         
         // Initialize the dashboard
         async function initDashboard() {
-            // Try to discover the working port silently
-            await discoverWorkingPort();
-            
             // First fetch status to check if system is ready
             await fetchStatus();
             
@@ -907,43 +888,6 @@
                 
                 console.log("Dashboard initialization completed");
             }
-        }
-        
-        // Silent version of port discovery (no alerts)
-        async function discoverWorkingPort() {
-            console.log("Silently discovering working API port...");
-            
-            const ports = ['8082', '8081', '8080', window.location.port];
-            const paths = ['/api/test', '/api/status'];
-            
-            for (const port of ports) {
-                for (const path of paths) {
-                    try {
-                        const url = `http://localhost:${port}${path}`;
-                        console.log(`Testing API connection to: ${url}`);
-                        
-                        const response = await fetch(url, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            console.log(`API connection successful to ${url}:`, data);
-                            workingApiPort = port; // Save the working port
-                            document.getElementById('status-text').textContent = `API available at port ${port}`;
-                            return true;
-                        }
-                    } catch (error) {
-                        console.error(`Error connecting to ${port}${path}:`, error);
-                    }
-                }
-            }
-            
-            console.log("Could not discover a working API port");
-            return false;
         }
         
         // Refresh data periodically (every 60 seconds)

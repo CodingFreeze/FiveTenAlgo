@@ -4,8 +4,10 @@ import json
 from models.data_processor import DataProcessor
 from functools import lru_cache
 import time
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 data_processor = DataProcessor(data_dir='data')
 
 # Add an in-memory cache with expiration
