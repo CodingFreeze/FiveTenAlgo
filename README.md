@@ -1,4 +1,4 @@
-# FiveTenAlgo
+# FiveTenAlgo 
 
 ![GitHub](https://img.shields.io/github/license/CodingFreeze/FiveTenAlgo?style=flat-square)
 ![Python Version](https://img.shields.io/badge/python-3.7%2B-blue?style=flat-square)
