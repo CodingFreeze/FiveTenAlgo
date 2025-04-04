@@ -6,9 +6,9 @@
 
 A trading algorithm that monitors securities on NYSE and NASDAQ, comparing real-time prices to those exactly one week prior and executing trades based on predetermined thresholds.
 
-## Demo
+## Live Demo
 
-![FiveTenAlgo Dashboard Demo](https://img.shields.io/badge/Demo-View%20Dashboard-blue?style=for-the-badge)
+[**View Live Dashboard**](https://five-ten-algo.vercel.app)
 
 ## Overview
 
@@ -18,13 +18,36 @@ This implementation uses Python with Flask for the backend and HTML/CSS with Plo
 
 - **Buy Signal**: When a security's price drops by about 5% (between -4.5% and -5.5%) compared to one week earlier, buy $5 worth.
 - **Sell Signal**: When a security's price rises by about 10% (between 9.5% and 10.5%) compared to one week earlier, sell $10 worth.
-- **Signal Confirmation**: Requires price change to remain stable for 1-5 minutes before executing trades.
+- **Signal Confirmation**: Requires price change to remain stable for 1-5 minutes before executing trades, reducing false signals.
 
 ### Implementation Approach
 
+FiveTenAlgo uses a hybrid approach to simulation and execution:
+
 1. **Precomputed Simulation**: Historical data from NASDAQ founding to March 1st, 2025 is precomputed and stored as JSON.
-2. **Current Data Processing**: When visiting the dashboard, the simulation continues from March 1st, 2025 to the current date.
+2. **Current Data Processing**: When visiting the dashboard, the simulation continues from that point to the current date.
 3. **Data Integration**: The two simulations are merged to provide a complete performance history.
+
+## Performance Metrics
+
+The algorithm's performance is evaluated using several key metrics:
+
+- **Total Return**: Overall portfolio growth since inception
+- **Annualized Return**: Yearly equivalent return rate
+- **Maximum Drawdown**: Largest percentage drop from peak to trough
+- **Volatility**: Standard deviation of returns
+- **Sharpe Ratio**: Risk-adjusted return metric
+
+## Known Limitations
+
+This project is a first attempt at building an algorithmic trading system and has several known limitations that will be addressed in future updates:
+
+- **Simulation Accuracy**: The backtesting may not fully account for real-world factors like slippage, liquidity constraints, and market impact.
+- **Transaction Costs**: While basic transaction fees are modeled, complex fee structures and broker-specific costs may not be accurately represented.
+- **Data Limitations**: Historical data might have gaps or inaccuracies that affect simulation results.
+- **Implementation Simplifications**: Certain aspects of the algorithm have been simplified for educational purposes and may require refinement for production use.
+
+These issues are being tracked and will be improved in subsequent versions of the algorithm.
 
 ## Features
 
